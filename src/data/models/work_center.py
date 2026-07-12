@@ -6,7 +6,7 @@ from src.data.models import Base
 
 
 class WorkCenter(Base):
-    __tablename__ = 'work_center'
+    __tablename__ = 'work_centers'
     id: Mapped[int] = mapped_column(primary_key=True)
     identifier: Mapped[str] = mapped_column(unique=True, index=True)
     name: Mapped[str] = mapped_column()

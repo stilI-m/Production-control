@@ -1,5 +1,9 @@
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
-class Base(declarative_base):
+
+class Base(DeclarativeBase):
     """Базовый класс для всех моделей SQLAlchemy 2.0"""
     pass
+from .work_center import WorkCenter
+from .batch import Batch
+from .product import Product
