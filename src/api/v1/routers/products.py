@@ -1,17 +1,36 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.v1.schemas.product import ProductResponse, ProductCreate
-from src.core.database import get_async_session
-from src.data.models import Product
+from src.core.dependencies import get_product_service
+from src.domain.services.product_service import ProductService
+from src.api.v1.schemas.product import ProductResponse
 
-router = APIRouter(prefix="/products", tags=["products"])
+router = APIRouter(prefix="/products", tags=["Products"])
 
-@router.post('/', response_model=ProductResponse)
-async def create_product(product: ProductCreate, session: AsyncSession = Depends(get_async_session)):
-    data = product.model_dump()
-    new_product = Product(**data)
-    session.add(new_product)
-    await session.commit()
-    await session.refresh(new_product)
-    return new_product
+# Вспомогательная схема для входящего запроса агрегации (если её еще нет)
+class AggregateRequest(BaseModel):
+    batch_id: int
+    code: str
+
+@router.post("/aggregate", response_model=ProductResponse)
+async def aggregate_product(
+        data: AggregateRequest,
+        product_service: ProductService = Depends(get_product_service),
+):
+    """
+    Агрегирует продукт. Если код верный, пометит как агрегированный
+    и автоматически очистит кэш дашборда и партии.
+    """
+    product = await product_service.aggregate_product(
+        batch_id=data.batch_id,
+        code=data.code
+    )
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Продукт не найден, не принадлежит партии или уже агрегирован"
+        )
+
+    # Если используешь ProductResponse из schemas, просто верни product
+    return {"message": "Успешно агрегирован", "product_id": product.id}

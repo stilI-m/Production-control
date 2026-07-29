@@ -40,7 +40,39 @@ class BatchResponse(BaseModel):
     shift_end: datetime
 
     work_center_id: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+class BatchUpdate(BaseModel):
+    """
+    Схема для частичного обновления партии (PATCH).
+    Все поля опциональны, так как мы можем изменить только одно поле (например, is_closed).
+    """
+    is_closed: bool | None = None
+    closed_at: datetime | None = None
+
+    task_description: str | None = None
+    shift: str | None = None
+    team: str | None = None
+    batch_number: int | None = None
+    batch_date: date | None = None
+    nomenclature: str | None = None
+    ekn_code: str | None = None
+    shift_start: datetime | None = None
+    shift_end: datetime | None = None
+    work_center_id: int | None = None
+
+    @field_validator('shift_start', 'shift_end', 'closed_at', mode='before')
+    @classmethod
+    def remove_timezone(cls, v: datetime | str | None) -> datetime | None:
+        """Тот же валидатор, но с поддержкой None"""
+        if v is None:
+            return v
+
+        if isinstance(v, str):
+            v = datetime.fromisoformat(v.replace('Z', '+00:00'))
+
+        if v.tzinfo is not None:
+            v = v.replace(tzinfo=None)
+        return v

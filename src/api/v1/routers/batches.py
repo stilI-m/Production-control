@@ -1,17 +1,68 @@
-from fastapi import APIRouter
-from fastapi.params import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.v1.schemas.batch import BatchResponse, BatchCreate
-from src.core.database import get_async_session
-from src.data.models import Batch
+from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
+from src.core.dependencies import get_batch_service
+from src.domain.services.batch_service import BatchService
 
-router = APIRouter(prefix="/batches", tags=["batches"])
-@router.post("/batches", response_model=BatchResponse)
-async def create_batches(batch: BatchCreate, session:AsyncSession = Depends(get_async_session)):
-    data = batch.model_dump()
-    new_batch = Batch(**data)
-    session.add(new_batch)
-    await session.commit()
-    await session.refresh(new_batch)
-    return new_batch
+router = APIRouter(prefix="/batches", tags=["Batches"])
+
+
+@router.get("", response_model=list[BatchResponse])
+async def get_batches(
+    is_closed: bool | None = None,
+    offset: int = 0,
+    limit: int = 20,
+    batch_service: BatchService = Depends(get_batch_service),
+):
+    """
+    Получение списка партий (с поддержкой кэширования в Redis).
+    """
+    return await batch_service.get_batches_list(
+        is_closed=is_closed, offset=offset, limit=limit
+    )
+
+
+@router.get("/{batch_id}", response_model=BatchResponse)
+async def get_batch_detail(
+    batch_id: int,
+    batch_service: BatchService = Depends(get_batch_service),
+):
+    """
+    Получение деталей партии с продукцией.
+    """
+    batch = await batch_service.get_batch_with_products(batch_id)
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Партия не найдена"
+        )
+    return batch
+
+
+@router.post("", response_model=BatchResponse, status_code=status.HTTP_201_CREATED)
+async def create_batch(
+    data: BatchCreate,
+    batch_service: BatchService = Depends(get_batch_service),
+):
+    """
+    Создание новой партии + авто-инвалидация кэша списков и дашборда.
+    """
+    return await batch_service.create_batch(data)
+
+
+@router.patch("/{batch_id}", response_model=BatchResponse)
+async def update_batch(
+    batch_id: int,
+    data: BatchUpdate,
+    batch_service: BatchService = Depends(get_batch_service),
+):
+    """
+    Обновление партии + авто-инвалидация деталей, статистики и списка.
+    """
+    batch = await batch_service.update_batch(batch_id, data)
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Партия не найдена"
+        )
+    return batch
