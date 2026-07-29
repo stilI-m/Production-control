@@ -49,9 +49,9 @@ async def get_batch_data(batch_id: int) -> dict | None:
                     for p in batch.products
                 ]
             }
-    except Exception as e:
+    except Exception:
         logger.exception("Ошибка при попытке получить данные из базы")
-        raise e
+        raise
 @celery_app.task
 def generate_batch_report(batch_id: int):
     logger.info("Начало сборки отчета для партии %s", batch_id)
@@ -102,9 +102,9 @@ def generate_batch_report(batch_id: int):
             logger.error("Не удалось загрузить файл %s в MinIO", file_name)
             return {"status": "error", "message": "Failed to upload to MinIO"}
 
-    except Exception as e:
+    except Exception:
         logger.exception("Ошибка в процессе генерации отчета для партии %s", batch_id)
-        raise e
+        raise
     finally:
         # Гарантированно удаляем файл из /tmp при любом исходе (успех или ошибка)
         if os.path.exists(temp_file_path):

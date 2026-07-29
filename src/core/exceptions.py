@@ -1,4 +1,3 @@
-from fastapi import Request
 from fastapi.responses import JSONResponse
 
 class AppException(Exception):
@@ -16,7 +15,7 @@ class ValidationError(AppException):
         super().__init__(status_code=400, detail=detail)
 
 # Этот хэндлер мы подключим в main.py
-async def app_exception_handler(request: Request, exc: AppException):
+async def app_exception_handler(exc: AppException):
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},

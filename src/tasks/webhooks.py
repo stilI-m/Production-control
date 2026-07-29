@@ -11,31 +11,33 @@ logger = logging.getLogger(__name__)
     max_retries=5
 )
 def send_webhook_event_task(
-        self,
+        self, 
         target_url: str,
         payload: dict,
         signature: str | None = None
 ):
-    """
-    Отправляет HTTP POST запрос на target_url.
-    В случае ошибки сети или статуса 4xx/5xx, Celery автоматически сделает retry.
-    """
-    logger.info("Отправка вебхука на URL: %s", target_url)
+    # Используем self.request.id, чтобы в логах было видно, какая именно попытка или задача отрабатывает
+    logger.info("Отправка вебхука [Task ID: %s] на URL: %s", self.request.id, target_url)
+
     headers = {"Content-Type": "application/json"}
     if signature:
         headers["X-Hub-Signature-256"] = f"sha256={signature}"
 
+    try:
+        response = requests.post(
+            target_url,
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        if response.status_code >= 400:
+            logger.warning("Вебхук на %s вернул статус-код %s", target_url, response.status_code)
 
-    response = requests.post(
-        target_url,
-        json=payload,
-        headers=headers,
-        timeout=10
-    )
-    if response.status_code >= 400:
-        logger.warning("Вебхук на %s вернул статус-код %s", target_url, response.status_code)
-    # Бросает HTTPError, если сервер вернул ошибку (например, 500)
-    # Это исключение тоже является наследником RequestException, поэтому Celery сделает retry.
-    response.raise_for_status()
-    logger.info("Вебхук успешно доставлен на %s", target_url)
-    return {"status": "success", "status_code": response.status_code, "url": target_url}
+        response.raise_for_status()
+        logger.info("Вебхук успешно доставлен на %s", target_url)
+        return {"status": "success", "status_code": response.status_code, "url": target_url}
+
+    except requests.RequestException as exc:
+        logger.error("Ошибка сети/сервера при отправке вебхука: %s. Пробуем повторить...", exc)
+
+        raise self.retry(exc=exc)
