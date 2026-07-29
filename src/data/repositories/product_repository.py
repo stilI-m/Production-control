@@ -22,7 +22,7 @@ class ProductRepository:
             )
             .values(
                 is_aggregated=True,
-                aggregated_at=datetime.now(timezone.utc)
+                aggregated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             )
             .returning(Product)
         )

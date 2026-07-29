@@ -12,7 +12,7 @@ from src.storage.minio_service import download_file_from_minio, upload_file_to_m
 from src.data.models.batch import Batch
 from src.core.cache import CacheService
 
-# Настраиваем логгер
+
 logger = logging.getLogger(__name__)
 
 

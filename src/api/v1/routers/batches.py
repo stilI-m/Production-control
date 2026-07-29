@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
 from src.core.dependencies import get_batch_service
 from src.domain.services.batch_service import BatchService
-
+from src.tasks.reports import generate_batch_report
 router = APIRouter(prefix="/batches", tags=["Batches"])
 
 
@@ -66,3 +66,11 @@ async def update_batch(
             detail="Партия не найдена"
         )
     return batch
+@router.post("/{batch_id}/report", status_code=202)
+async def request_batch_report(batch_id: int):
+    """
+    Запускает асинхронную генерацию Excel-отчета по партии.
+    Возвращает ID задачи, по которому можно проверить статус.
+    """
+    task = generate_batch_report.delay(batch_id)
+    return {"message": "Генерация отчета запущена", "task_id": task.id}

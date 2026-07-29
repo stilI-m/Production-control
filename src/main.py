@@ -13,11 +13,17 @@ from src.api.v1.routers.tasks import router as tasks_router
 
 from src.core.exceptions import AppException, app_exception_handler
 
+from src.core.logging_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
-    print("🚀 Старт сервера...")
+    logger.info("Приложение успешно запущено и логирование настроено")
     yield
-    print("🛑 Остановка сервера...")
+    logger.info("Приложение останавливается. Закрытие соединений...")
 
 
 def create_app() -> FastAPI:

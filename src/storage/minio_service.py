@@ -1,7 +1,10 @@
+import logging
 import os
 import boto3
 from botocore.exceptions import ClientError
 from botocore.client import Config
+
+logger = logging.getLogger(__name__)
 # Настройки: если переменной нет (локальный FastAPI), берем localhost.
 # Если переменная есть (в контейнере воркера), берем её.
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
@@ -30,9 +33,9 @@ def upload_file_to_minio(file_bytes: bytes, object_name: str, bucket_name: str =
             ContentLength=len(file_bytes)
         )
         return object_name
-    except Exception as e:
-        print(f"Ошибка загрузки в MinIO: {e}")
-        raise e
+    except Exception:
+        logger.exception("Ошибка загрузки файла %s в бакет %s", object_name, bucket_name)
+        raise
 def get_presigned_url(object_name: str, bucket_name: str = "exports", expires_in: int = 3600) -> str | None:
     """
     Генерирует временную ссылку (Presigned URL) для прямого скачивания файла из MinIO.
@@ -48,8 +51,8 @@ def get_presigned_url(object_name: str, bucket_name: str = "exports", expires_in
             ExpiresIn=expires_in
         )
         return url
-    except Exception as e:
-        print(f"Ошибка при генерации ссылки для {object_name}: {e}")
+    except Exception:
+        logger.exception("Ошибка при генерации ссылки для %s", object_name)
         return None
 def download_file_from_minio(file_url: str, local_path: str, bucket_name: str = "imports") -> bool:
     """
@@ -61,7 +64,7 @@ def download_file_from_minio(file_url: str, local_path: str, bucket_name: str = 
     # Если передается сразу имя файла, то object_name = file_url
     object_name = file_url.split("/")[-1] if "http" in file_url else file_url
 
-    print(f"Попытка скачать файл {object_name} из бакета {bucket_name} в {local_path}...")
+    logger.info("Попытка скачать файл %s из бакета %s в %s...", object_name, bucket_name, local_path)
 
     try:
         # Убедимся, что директория для сохранения существует (например /tmp/)
@@ -69,9 +72,9 @@ def download_file_from_minio(file_url: str, local_path: str, bucket_name: str = 
 
         # Скачиваем файл
         s3_client.download_file(bucket_name, object_name, local_path)
-        print(f"Файл успешно скачан: {local_path}")
+        logger.info("Файл успешно скачан: %s", local_path)
         return True
 
-    except ClientError as e:
-        print(f"Ошибка при скачивании файла из MinIO: {e}")
-        raise e
+    except ClientError:
+        logger.exception("Ошибка скачивания файла %s в бакет %s", object_name, bucket_name)
+        raise
