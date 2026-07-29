@@ -102,6 +102,24 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+  flower:
+    image: mher/flower:latest
+    container_name: flower_dashboard
+    working_dir: /app
+    command: celery -A src.celery_app.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./:/app
+    depends_on:
+      - rabbitmq
+      - redis
+    environment:
+      - CELERY_BROKER_URL=amqp://admin:admin@rabbitmq:5672//
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONPATH=/app
+
+
 volumes:
   postgres_data:
   rabbitmq_data:

@@ -7,7 +7,10 @@ from src.data.models.webhook import WebhookSubscription
 class WebhookRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
-
+    async def get_all(self):
+        stmt = select(WebhookSubscription)
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
     async def create(self, data) -> WebhookSubscription:
         """Создание новой подписки на вебхук"""
         subscription = WebhookSubscription(**data.model_dump(exclude_unset=True))
@@ -34,7 +37,14 @@ class WebhookRepository:
 
     async def delete(self, webhook_id: int) -> bool:
         """Удаление подписки"""
-        stmt = delete(WebhookSubscription).where(WebhookSubscription.id == webhook_id)
+        # Возвращаем ID удаленной записи
+        stmt = (
+            delete(WebhookSubscription)
+            .where(WebhookSubscription.id == webhook_id)
+            .returning(WebhookSubscription.id)
+        )
         result = await self.session.execute(stmt)
         await self.session.commit()
-        return result.rowcount > 0
+
+        # Если вернулся ID — значит запись существовала и была удалена
+        return result.scalar_one_or_none() is not None

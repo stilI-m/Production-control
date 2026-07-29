@@ -6,6 +6,8 @@ from src.data.models.batch import Batch
 
 from sqlalchemy import func
 from src.data.models.product import Product
+from sqlalchemy.exc import IntegrityError
+from src.core.exceptions import ValidationError
 
 class BatchRepository:
     def __init__(self, session: AsyncSession):
@@ -62,12 +64,14 @@ class BatchRepository:
             .values(**data.model_dump(exclude_unset=True))
             .returning(Batch)  # Сразу возвращаем обновленную запись
         )
-
-        result = await self.session.execute(stmt)
-        await self.session.commit()
-
-        return result.scalar_one_or_none()
-
+        try:
+            result = await self.session.execute(stmt)
+            await self.session.commit()
+            return result.scalar_one_or_none()
+        except IntegrityError:
+            await self.session.rollback()
+            # Бросаем понятную ошибку вместо падения сервера
+            raise ValidationError("Нарушение целостности: указан несуществующий work_center_id или product_id")
     async def get_dashboard_stats(self) -> dict:
         total_batches = await self.session.scalar(select(func.count(Batch.id)))
         active_batches = await self.session.scalar(
