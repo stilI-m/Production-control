@@ -2,7 +2,7 @@ import os
 from celery import Celery
 from celery.schedules import crontab
 broker_url_env = os.getenv('CELERY_BROKER_URL')
-REDIS_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
+REDIS_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://redis:6379/1')
 if not broker_url_env:
     RABBITMQ_USER = os.getenv('RABBITMQ_USER', 'admin')
     RABBITMQ_PASS = os.getenv('RABBITMQ_PASS', 'admin')
