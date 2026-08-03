@@ -23,7 +23,6 @@ class BatchCreate(BaseModel):
     )
 
     @field_validator('shift_start', 'shift_end', mode='before')
-    @classmethod
     def remove_timezone(cls, v: datetime | str) -> datetime:
         if isinstance(v, str):
             v = datetime.fromisoformat(v.replace('Z', '+00:00'))
@@ -49,7 +48,6 @@ class BatchUpdate(BaseModel):
     work_center_id: int | None = Field(None, gt=0, le=2147483647, description="ID рабочего центра")
 
     @field_validator('shift_start', 'shift_end', 'closed_at', mode='before')
-    @classmethod
     def remove_timezone(cls, v: datetime | str | None) -> datetime | None:
         if v is None:
             return v

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 
 from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
-from src.core.dependencies import get_batch_service
+from src.core.dependencies import get_batch_service, verify_api_key
 from src.domain.services.batch_service import BatchService
 from src.tasks.reports import generate_batch_report
 router = APIRouter(prefix="/batches", tags=["Batches"])
@@ -10,8 +10,8 @@ router = APIRouter(prefix="/batches", tags=["Batches"])
 @router.get("", response_model=list[BatchResponse])
 async def get_batches(
     is_closed: bool | None = None,
-    offset: int = 0,
-    limit: int = 20,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(20, gt=0, le=100),
     batch_service: BatchService = Depends(get_batch_service),
 ):
     """
@@ -39,7 +39,7 @@ async def get_batch_detail(
     return batch
 
 
-@router.post("", response_model=BatchResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=BatchResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_api_key)])
 async def create_batch(
     data: BatchCreate,
     batch_service: BatchService = Depends(get_batch_service),
@@ -50,7 +50,7 @@ async def create_batch(
     return await batch_service.create_batch(data)
 
 
-@router.patch("/{batch_id}", response_model=BatchResponse)
+@router.patch("/{batch_id}", response_model=BatchResponse, dependencies=[Depends(verify_api_key)])
 async def update_batch(
     batch_id: int,
     data: BatchUpdate,
@@ -66,7 +66,7 @@ async def update_batch(
             detail="Партия не найдена"
         )
     return batch
-@router.post("/{batch_id}/report", status_code=202)
+@router.post("/{batch_id}/report", status_code=202, dependencies=[Depends(verify_api_key)])
 async def request_batch_report(batch_id: int):
     """
     Запускает асинхронную генерацию Excel-отчета по партии.

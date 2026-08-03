@@ -21,7 +21,7 @@ def generate_batches_pdf_report(data: List[Dict[str, Any]], output_path: str, ti
         topMargin=30, bottomMargin=30
     )
 
-    elements = []
+    elements: List = []
     styles = getSampleStyleSheet()
 
     # 1. Добавляем заголовок

@@ -1,14 +1,13 @@
-import httpx
 import requests
 from celery import shared_task
 import logging
 
 logger = logging.getLogger(__name__)
 @shared_task(bind=True,
-    autoretry_for=(httpx.RequestError, httpx.HTTPStatusError),
     retry_backoff=True,     # Включает экспоненциальную задержку
     retry_backoff_max=600,  # Максимум 10 минут между попытками
-    max_retries=5
+    max_retries=5,
+    default_retry_delay=10,
 )
 def send_webhook_event_task(
         self, 

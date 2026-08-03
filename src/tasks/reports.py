@@ -93,7 +93,12 @@ def generate_batch_report(batch_id: int):
 
         wb.save(temp_file_path)
 
-        uploaded_name = upload_file_to_minio(temp_file_path, file_name, "reports")
+        # Читаем сохраненный Excel-файл как байты
+        with open(temp_file_path, "rb") as f:
+            file_bytes = f.read()
+
+        # Отправляем байты в MinIO
+        uploaded_name = upload_file_to_minio(file_bytes, file_name, "reports")
 
         if uploaded_name:
             logger.info("Успешная загрузка файла %s в MinIO", file_name)

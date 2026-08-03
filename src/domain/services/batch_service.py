@@ -7,11 +7,14 @@ from src.api.v1.schemas.batch import BatchCreate, BatchUpdate
 from sqlalchemy.exc import IntegrityError
 import logging
 
+from src.domain.services.webhook_service import WebhookService
+
 logger = logging.getLogger(__name__)
 class BatchService:
-    def __init__(self, batch_repo: BatchRepository):
+    def __init__(self, batch_repo: BatchRepository, webhook_service: WebhookService):
         """Инжектим репозиторий, чтобы сервис не зависел от конкретной БД"""
         self.batch_repo = batch_repo
+        self.webhook_service = webhook_service
 
     @cached(ttl=60, key_prefix="batches_list")
     async def get_batches_list(self, is_closed: bool | None = None, offset: int = 0, limit: int = 20):
@@ -34,6 +37,18 @@ class BatchService:
         try:
             batch = await self.batch_repo.create(data)
             logger.info("Успешно создана партия ID: %s", batch.id)
+            try:
+                await self.webhook_service.trigger_event(
+                    event_type="batch_created",
+                    payload={
+                        "batch_id": batch.id,
+                        "batch_number": batch.batch_number,
+                        "status": "created"
+                    }
+                )
+            except Exception as e:
+                # Логируем ошибку, но не даем ей сломать создание партии
+                logger.error("Ошибка при отправке вебхука batch_created: %s", e)
             return batch
         except IntegrityError:
             logger.exception("Ошибка внешнего ключа при создании партии")
@@ -45,6 +60,7 @@ class BatchService:
         except Exception as e:
             logger.exception("Непредвиденная ошибка при создании партии")
             raise e
+
     async def update_batch(self, batch_id: int, data: BatchUpdate):
         """
         Обновление партии и полная инвалидация связанных данных.

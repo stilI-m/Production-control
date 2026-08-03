@@ -1,8 +1,9 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Depends
 from celery.result import AsyncResult
 
 # Импортируем наш настроенный экземпляр Celery
 from src.celery_app import celery_app
+from src.core.dependencies import verify_api_key
 # Импортируем сами таски
 from src.tasks.import_export import import_batches_from_file, export_batches_to_excel
 # Импортируем схемы
@@ -11,7 +12,7 @@ from src.api.v1.schemas.task import ImportRequest, ExportRequest, TaskStatusResp
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
-@router.post("/import", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/import", status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(verify_api_key)])
 async def start_import_task(data: ImportRequest):
     """
     Запускает фоновую задачу импорта партий.
@@ -22,7 +23,7 @@ async def start_import_task(data: ImportRequest):
     return {"task_id": task.id, "message": "Задача импорта добавлена в очередь"}
 
 
-@router.post("/export", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/export", status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(verify_api_key)])
 async def start_export_task(data: ExportRequest):
     """
     Запускает фоновую задачу экспорта партий.

@@ -1,5 +1,5 @@
 from sqlalchemy import select, update
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.data.models.batch import Batch
@@ -35,11 +35,11 @@ class BatchRepository:
     async def get_by_id_with_products(self, batch_id: int) -> Batch | None:
         """
         Получение партии вместе с привязанной продукцией.
-        Используем joinedload для предотвращения проблемы N+1.
+        Используем selectinload для предотвращения проблемы N+1.
         """
         stmt = (
             select(Batch)
-            .options(joinedload(Batch.products))
+            .options(selectinload(Batch.products))
             .where(Batch.id == batch_id)
         )
         result = await self.session.execute(stmt)

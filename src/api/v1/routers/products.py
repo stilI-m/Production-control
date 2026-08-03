@@ -32,5 +32,4 @@ async def aggregate_product(
             detail="Продукт не найден, не принадлежит партии или уже агрегирован"
         )
 
-    # Если используешь ProductResponse из schemas, просто верни product
-    return {"message": "Успешно агрегирован", "product_id": product.id}
+    return product

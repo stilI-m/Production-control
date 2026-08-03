@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from typing import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -22,13 +21,6 @@ engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
 test_async_session_maker = async_sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=False
 )
-
-@pytest.fixture(scope="session", autouse=True)
-def event_loop():
-    """Создаем единый цикл событий для асинхронных тестов."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 @pytest.fixture(autouse=True)
 async def setup_database():

@@ -1,5 +1,7 @@
+import os
 from typing import AsyncGenerator
-from fastapi import Depends
+from fastapi import Depends, Security, HTTPException, status
+from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import async_session_maker
@@ -31,11 +33,13 @@ def get_batch_repository(
     return BatchRepository(session)
 
 
-def get_batch_service(
-    batch_repo: BatchRepository = Depends(get_batch_repository)
-) -> BatchService:
-    """Инжектим репозиторий в сервис партий"""
-    return BatchService(batch_repo)
+def get_batch_service(session: AsyncSession = Depends(get_db)):
+    batch_repo = BatchRepository(session)
+    webhook_repo = WebhookRepository(session)
+    webhook_service = WebhookService(webhook_repo)
+
+    # Теперь передаем оба аргумента!
+    return BatchService(batch_repo, webhook_service)
 
 def get_product_repository(
     session: AsyncSession = Depends(get_db)
@@ -64,3 +68,14 @@ def get_webhook_service(
     webhook_repo: WebhookRepository = Depends(get_webhook_repository)
 ) -> WebhookService:
     return WebhookService(webhook_repo)
+
+API_KEY = os.getenv("API_KEY", "super-secret-admin-key")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if api_key != API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный или отсутствующий API-ключ"
+        )
+    return api_key

@@ -15,10 +15,14 @@ services:
       MINIO_SECRET_KEY: minioadmin123
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/production_control
     depends_on:
-      - minio
-      - postgres
-      - rabbitmq
-      - redis
+      minio:
+        condition: service_started
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - .:/app
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
@@ -34,6 +38,11 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d твое_название_бд" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: rabbitmq
@@ -59,13 +68,22 @@ services:
     ports:
       - "6379:6379"
     restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   celery_worker:
     build:
       context: .
     container_name: celery_worker
     command: celery -A src.celery_app worker --loglevel=info
     depends_on:
+      redis:
+        condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     environment:
       MINIO_ENDPOINT: http://minio:9000
@@ -83,8 +101,14 @@ services:
     volumes:
       - .:/app
     depends_on:
-      - rabbitmq
-      - celery_worker
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      celery_worker:
+        condition: service_started
     environment:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=admin

@@ -73,8 +73,8 @@ class WebhookService:
 
             for sub in subscribers:
                 signature = None
-                if hasattr(sub, "secret") and sub.secret:
-                    signature = generate_hmac_signature(payload_bytes, sub.secret)
+                if hasattr(sub, "secret_key") and sub.secret_key:
+                    signature = generate_hmac_signature(payload_bytes, sub.secret_key)
 
                 # Отправляем задачу в очередь Celery
                 send_webhook_event_task.delay(

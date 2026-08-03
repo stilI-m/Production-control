@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Импортируем нашу функцию получения сессии
-from src.core.database import get_async_session
+from src.core.dependencies import get_db
 from src.data.models.work_center import WorkCenter
 from src.api.v1.schemas.work_center import WorkCenterCreate, WorkCenterResponse
 
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/work_centers", tags=["work_centers"])
 @router.post("/", response_model=WorkCenterResponse)
 async def create_work_center(
         work_center_in: WorkCenterCreate,
-        session: AsyncSession = Depends(get_async_session)
+        session: AsyncSession = Depends(get_db)
 ):
     # 1. Превращаем Pydantic-схему обратно в питоновский словарь
     data = work_center_in.model_dump()

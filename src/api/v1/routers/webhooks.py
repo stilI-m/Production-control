@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from src.core.dependencies import get_webhook_service
 from src.domain.services.webhook_service import WebhookService
 from src.api.v1.schemas.webhook import WebhookSubscriptionCreate, WebhookSubscriptionResponse
+from src.core.dependencies import verify_api_key
 
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
@@ -29,7 +30,7 @@ async def get_webhook(
         raise NotFoundError(f"Вебхук с ID {webhook_id} не найден")
     return webhook
 
-@router.post("", response_model=WebhookSubscriptionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=WebhookSubscriptionResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_api_key)])
 async def create_webhook(
     data: WebhookSubscriptionCreate,
     webhook_service: WebhookService = Depends(get_webhook_service),
